@@ -287,3 +287,17 @@ unset(_IMPORT_CHECK_TARGETS)
 # Commands beyond this point should not need to know the version.
 set(CMAKE_IMPORT_FILE_VERSION)
 cmake_policy(POP)
+
+if(NOT TARGET cpufeatures)
+    add_library(cpufeatures STATIC IMPORTED)
+    set_target_properties(cpufeatures PROPERTIES
+        IMPORTED_LOCATION "${ANDROID_NDK}/sources/android/cpufeatures/cpu-features.c"
+    )
+endif()
+
+if(NOT TARGET opencv_java4)
+    add_library(opencv_java4 SHARED IMPORTED)
+    set_target_properties(opencv_java4 PROPERTIES
+        IMPORTED_LOCATION "${CMAKE_CURRENT_LIST_DIR}/../../../jniLibs/x86_64/libopencv_java4.so"
+    )
+endif()

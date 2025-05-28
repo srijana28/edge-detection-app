@@ -7,44 +7,41 @@
 #    In your CMakeLists.txt, add these lines:
 #
 #    find_package(OpenCV REQUIRED)
-#    include_directories(${OpenCV_INCLUDE_DIRS}) # Not needed for CMake >= 2.8.11
+#    target_include_directories(MY_TARGET_NAME PRIVATE ${OpenCV_INCLUDE_DIRS})
 #    target_link_libraries(MY_TARGET_NAME ${OpenCV_LIBS})
-#
-#    Or you can search for specific OpenCV modules:
-#
-#    find_package(OpenCV REQUIRED core videoio)
-#
-#    If the module is found then OPENCV_<MODULE>_FOUND is set to TRUE.
-#
-#    This file will define the following variables:
-#      - OpenCV_LIBS                     : The list of all imported targets for OpenCV modules.
-#      - OpenCV_INCLUDE_DIRS             : The OpenCV include directories.
-#      - OpenCV_ANDROID_NATIVE_API_LEVEL : Minimum required level of Android API.
-#      - OpenCV_VERSION                  : The version of this OpenCV build: "4.11.0"
-#      - OpenCV_VERSION_MAJOR            : Major version part of OpenCV_VERSION: "4"
-#      - OpenCV_VERSION_MINOR            : Minor version part of OpenCV_VERSION: "11"
-#      - OpenCV_VERSION_PATCH            : Patch version part of OpenCV_VERSION: "0"
-#      - OpenCV_VERSION_STATUS           : Development status of this build: ""
 #
 # ===================================================================================
 
-# Extract directory name from full path of the file currently being processed.
-# Note that CMake 2.8.3 introduced CMAKE_CURRENT_LIST_DIR. We reimplement it
-# for older versions of CMake to support these as well.
-if(CMAKE_VERSION VERSION_LESS "2.8.3")
-  get_filename_component(CMAKE_CURRENT_LIST_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+# Get the current directory
+get_filename_component(OpenCV_CONFIG_PATH "${CMAKE_CURRENT_LIST_FILE}" PATH)
+
+# Set OpenCV paths
+set(OpenCV_INSTALL_PATH "${OpenCV_CONFIG_PATH}/..")
+set(OpenCV_INCLUDE_DIRS "${OpenCV_INSTALL_PATH}/include")
+set(OpenCV_LIB_DIRS "${OpenCV_INSTALL_PATH}/libs/${ANDROID_ABI}")
+set(OpenCV_3RDPARTY_LIB_DIRS "${OpenCV_INSTALL_PATH}/3rdparty/libs/${ANDROID_ABI}")
+
+# Set OpenCV version
+set(OpenCV_VERSION 4.11.0)
+set(OpenCV_VERSION_MAJOR 4)
+set(OpenCV_VERSION_MINOR 11)
+set(OpenCV_VERSION_PATCH 0)
+
+# Ensure cpufeatures is available
+if(NOT TARGET cpufeatures)
+    message(FATAL_ERROR "cpufeatures target must be defined before including OpenCV")
 endif()
 
-if(NOT DEFINED OpenCV_CONFIG_SUBDIR)
-  set(OpenCV_CONFIG_SUBDIR "/abi-${ANDROID_NDK_ABI_NAME}")
+# Include architecture-specific configuration
+if(ANDROID_ABI STREQUAL "armeabi-v7a")
+    include("${OpenCV_CONFIG_PATH}/abi-armeabi-v7a/OpenCVModules.cmake")
+elseif(ANDROID_ABI STREQUAL "arm64-v8a")
+    include("${OpenCV_CONFIG_PATH}/abi-arm64-v8a/OpenCVModules.cmake")
+elseif(ANDROID_ABI STREQUAL "x86")
+    include("${OpenCV_CONFIG_PATH}/abi-x86/OpenCVModules.cmake")
+elseif(ANDROID_ABI STREQUAL "x86_64")
+    include("${OpenCV_CONFIG_PATH}/abi-x86_64/OpenCVModules.cmake")
 endif()
 
-set(OpenCV_CONFIG_PATH "${CMAKE_CURRENT_LIST_DIR}${OpenCV_CONFIG_SUBDIR}")
-if(EXISTS "${OpenCV_CONFIG_PATH}/OpenCVConfig.cmake")
-  include("${OpenCV_CONFIG_PATH}/OpenCVConfig.cmake")
-else()
-  if(NOT OpenCV_FIND_QUIETLY)
-    message(WARNING "Found OpenCV Android Pack but it has no binaries compatible with your ABI (can't find: ${OpenCV_CONFIG_SUBDIR})")
-  endif()
-  set(OpenCV_FOUND FALSE)
-endif()
+# Set OpenCV libraries
+set(OpenCV_LIBS opencv_core opencv_imgproc opencv_features2d opencv_java4)

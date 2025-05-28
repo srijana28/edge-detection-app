@@ -8,5 +8,10 @@ object NativeLib {
         System.loadLibrary("native-lib")
     }
 
-    external fun processEdge(frameData: ByteArray, width: Int, height: Int, surface: Surface)
+    external fun processFrame(
+        input: ByteArray,
+        width: Int,
+        height: Int,
+        useEdgeDetection: Boolean
+    ): ByteArray
 }

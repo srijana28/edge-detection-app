@@ -1,33 +1,47 @@
 #include <jni.h>
-#include <opencv2/opencv.hpp>
-using namespace cv;
+#include <string>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+#include <android/log.h>
 
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_example_edgedetection_NativeLib_processEdge(JNIEnv *env, jobject thiz,
-                                                     jbyteArray input_frame, jint width, jint height,
-                                                     jobject surface) {
-    jbyte *frame_data = env->GetByteArrayElements(input_frame, nullptr);
-    Mat yuv(height + height / 2, width, CV_8UC1, (unsigned char *) frame_data);
-    Mat bgr, gray, edge;
+#define TAG "NativeLib"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
-    cvtColor(yuv, bgr, COLOR_YUV2BGR_NV21);
-    cvtColor(bgr, gray, COLOR_BGR2GRAY);
-    Canny(gray, edge, 50, 150);
+extern "C" {
 
-    Mat rgba;
-    cvtColor(edge, rgba, COLOR_GRAY2RGBA);
+JNIEXPORT jbyteArray JNICALL
+Java_com_example_edgedetectionapp_MainActivity_processFrame(
+        JNIEnv *env,
+        jobject /* this */,
+        jbyteArray input,
+        jint width,
+        jint height,
+        jboolean useEdgeDetection) {
 
-    ANativeWindow *window = ANativeWindow_fromSurface(env, surface);
-    ANativeWindow_setBuffersGeometry(window, width, height, WINDOW_FORMAT_RGBA_8888);
+    // Convert input byte array to Mat
+    jbyte *inputBuffer = env->GetByteArrayElements(input, nullptr);
+    cv::Mat inputMat(height, width, CV_8UC1, inputBuffer);
+    cv::Mat outputMat;
 
-    ANativeWindow_Buffer buffer;
-    if (ANativeWindow_lock(window, &buffer, nullptr) == 0) {
-        Mat dst(buffer.height, buffer.width, CV_8UC4, buffer.bits);
-        rgba.copyTo(dst);
-        ANativeWindow_unlockAndPost(window);
+    if (useEdgeDetection) {
+        // Apply Gaussian blur to reduce noise
+        cv::GaussianBlur(inputMat, outputMat, cv::Size(5, 5), 1.5);
+
+        // Apply Canny edge detection
+        cv::Canny(outputMat, outputMat, 80, 100);
+    } else {
+        outputMat = inputMat.clone();
     }
-    ANativeWindow_release(window);
 
-    env->ReleaseByteArrayElements(input_frame, frame_data, 0);
+    // Convert the processed image back to byte array
+    jbyteArray output = env->NewByteArray(width * height);
+    env->SetByteArrayRegion(output, 0, width * height, (jbyte *)outputMat.data);
+
+    // Release the input buffer
+    env->ReleaseByteArrayElements(input, inputBuffer, 0);
+
+    return output;
 }
+
+} // extern "C"
